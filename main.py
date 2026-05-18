@@ -108,6 +108,25 @@ async def fetch_from_vault(endpoint: str) -> dict:
         return response.json()
 
 
+
+# ─── Helper: Cache ───────────────────────────────────────────────────────────
+
+async def cached_gemini(cache_key: str, prompt: str, system: str = "") -> str:
+    today = datetime.now().strftime("%Y-%m-%d")
+    full_key = f"{cache_key}_{today}"
+    try:
+        result = supabase.table("ai_cache").select("response").eq("cache_key", full_key).execute()
+        if result.data:
+            return result.data[0]["response"]
+    except Exception:
+        pass
+    response = await call_gemini(prompt, system)
+    try:
+        supabase.table("ai_cache").upsert({"cache_key": full_key, "response": response}).execute()
+    except Exception:
+        pass
+    return response
+
 # ════════════════════════════════════════════════════════════════════════════
 # ENDPOINT 1: /customer-overview
 # ════════════════════════════════════════════════════════════════════════════
@@ -162,7 +181,7 @@ Please do two things:
 Return as JSON with keys: "categorized_news" (object with category arrays) and "haber_implications" (array of strings).
 """
 
-    result = await call_gemini(prompt)
+    result = await cached_gemini(f"{name}_overview", prompt)
 
     try:
         parsed = json.loads(result)
@@ -216,7 +235,7 @@ Return as JSON with keys:
 - "new_appointments": array of new people mentioned in news with name, role, and why Haber should reach out
 """
 
-    result = await call_gemini(prompt)
+    result = await cached_gemini(f"{name}_overview", prompt)
 
     try:
         parsed = json.loads(result)
@@ -267,7 +286,7 @@ Return as JSON with keys:
 - "whitespace_summary": 2-3 sentence summary for the dashboard card
 """
 
-    result = await call_gemini(prompt)
+    result = await cached_gemini(f"{name}_overview", prompt)
 
     try:
         parsed = json.loads(result)
@@ -370,7 +389,7 @@ Return as JSON with key "suggested_opportunities": array of objects with:
 - priority (High/Medium/Low)
 """
 
-    result = await call_gemini(prompt)
+    result = await cached_gemini(f"{name}_overview", prompt)
 
     try:
         parsed = json.loads(result)

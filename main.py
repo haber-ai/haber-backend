@@ -51,24 +51,22 @@ class CustomerRequest(BaseModel):
 
 # ─── Helper: Call Claude ─────────────────────────────────────────────────────
 
-async def call_claude(prompt: str, system: str = "") -> str:
+async def call_gemini(prompt: str, system: str = "") -> str:
+    full_prompt = f"{system}\n\n{prompt}" if system else prompt
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
+            headers={"Content-Type": "application/json"},
             json={
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 2000,
-                "system": system or "You are a B2B intelligence analyst for Haber, a water treatment and industrial solutions company. Always tie your analysis back to what it means for Haber as a vendor.",
-                "messages": [{"role": "user", "content": prompt}],
+                "contents": [{"parts": [{"text": full_prompt}]}],
+                "generationConfig": {"maxOutputTokens": 2000, "temperature": 0.7},
             },
         )
         data = response.json()
-        return data["content"][0]["text"]
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            raise HTTPException(status_code=500, detail=f"Gemini error: {json.dumps(data)}")
 
 
 # ─── Helper: Tavily Search ───────────────────────────────────────────────────
@@ -164,7 +162,7 @@ Please do two things:
 Return as JSON with keys: "categorized_news" (object with category arrays) and "haber_implications" (array of strings).
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -218,7 +216,7 @@ Return as JSON with keys:
 - "new_appointments": array of new people mentioned in news with name, role, and why Haber should reach out
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -269,7 +267,7 @@ Return as JSON with keys:
 - "whitespace_summary": 2-3 sentence summary for the dashboard card
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -372,7 +370,7 @@ Return as JSON with key "suggested_opportunities": array of objects with:
 - priority (High/Medium/Low)
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -493,7 +491,7 @@ Write the report with these exact sections:
 Be specific, professional, and actionable. Write for a senior account manager who needs to act on this.
 """
 
-    report_text = await call_claude(report_prompt, system="You are a senior B2B intelligence analyst writing a formal account report for Haber, a water treatment company. Be specific, professional, and concise.")
+    report_text = await call_gemini(report_prompt, system="You are a senior B2B intelligence analyst writing a formal account report for Haber, a water treatment company. Be specific, professional, and concise.")
 
     # Step 3: Generate PDF using ReportLab
     filename = f"temp/{name.replace(' ', '_')}_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"

@@ -51,12 +51,13 @@ class CustomerRequest(BaseModel):
 
 # ─── Helper: Call Claude ─────────────────────────────────────────────────────
 
-async def call_claude(prompt: str, system: str = "") -> str:
+async def call_gemini(prompt: str, system: str = "") -> str:
+    full_prompt = f"{system}\n\n{prompt}" if system else prompt
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(
             "https://api.anthropic.com/v1/messages",
             headers={
-                "x-api-key": ANTHROPIC_API_KEY,
+                "Content-Type": "application/json",
                 "anthropic-version": "2023-06-01",
                 "content-type": "application/json",
             },
@@ -164,7 +165,7 @@ Please do two things:
 Return as JSON with keys: "categorized_news" (object with category arrays) and "haber_implications" (array of strings).
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -218,7 +219,7 @@ Return as JSON with keys:
 - "new_appointments": array of new people mentioned in news with name, role, and why Haber should reach out
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -269,7 +270,7 @@ Return as JSON with keys:
 - "whitespace_summary": 2-3 sentence summary for the dashboard card
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)
@@ -372,7 +373,7 @@ Return as JSON with key "suggested_opportunities": array of objects with:
 - priority (High/Medium/Low)
 """
 
-    result = await call_claude(prompt)
+    result = await call_gemini(prompt)
 
     try:
         parsed = json.loads(result)

@@ -55,21 +55,18 @@ async def call_gemini(prompt: str, system: str = "") -> str:
     full_prompt = f"{system}\n\n{prompt}" if system else prompt
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            headers={"Content-Type": "application/json"},
             json={
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 2000,
-                "system": system or "You are a B2B intelligence analyst for Haber, a water treatment and industrial solutions company. Always tie your analysis back to what it means for Haber as a vendor.",
-                "messages": [{"role": "user", "content": prompt}],
+                "contents": [{"parts": [{"text": full_prompt}]}],
+                "generationConfig": {"maxOutputTokens": 2000, "temperature": 0.7},
             },
         )
         data = response.json()
-        return data["content"][0]["text"]
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            raise HTTPException(status_code=500, detail=str(data))
 
 
 # ─── Helper: Tavily Search ───────────────────────────────────────────────────

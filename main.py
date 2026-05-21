@@ -42,21 +42,25 @@ class CustomerRequest(BaseModel):
     customer_name: str
 
 async def call_gemini(prompt: str, system: str = "") -> str:
-    full_prompt = f"{system}\n\n{prompt}" if system else prompt
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={GEMINI_API_KEY}",
-            headers={"Content-Type": "application/json"},
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}", "Content-Type": "application/json"},
             json={
-                "contents": [{"parts": [{"text": full_prompt}]}],
-                "generationConfig": {"maxOutputTokens": 2000, "temperature": 0.7},
+                "model": "llama3-8b-8192",
+                "messages": [
+                    {"role": "system", "content": system or "You are a B2B intelligence analyst for Haber, a water treatment company."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 2000,
+                "temperature": 0.7,
             },
         )
         data = response.json()
         try:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            return data["choices"][0]["message"]["content"]
         except Exception:
-            raise HTTPException(status_code=500, detail=f"Gemini error: {json.dumps(data)}")
+            raise HTTPException(status_code=500, detail=f"Groq error: {json.dumps(data)}")
 
 async def tavily_search(query: str, max_results: int = 5) -> list:
     async with httpx.AsyncClient(timeout=30) as client:

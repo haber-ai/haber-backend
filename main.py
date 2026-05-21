@@ -485,6 +485,48 @@ Return ONLY valid JSON with this exact structure:
     doc.build(elements)
     return FileResponse(path=filename, filename=f"{name}_Intelligence_Report.pdf", media_type="application/pdf")
 
+
+@app.post("/chat")
+async def chat(req: dict):
+    customer_name = req.get("customer_name", "")
+    question = req.get("question", "")
+    
+    # Fetch context from Supabase
+    plants = supabase.table("plants").select("*").eq("customer_name", customer_name).execute().data or []
+    stakeholders = supabase.table("stakeholders").select("*").eq("customer_name", customer_name).execute().data or []
+    pipeline = supabase.table("expansion_pipeline").select("*").eq("customer_name", customer_name).execute().data or []
+    
+    # Fetch cached news intelligence
+    today = datetime.now().strftime("%Y-%m-%d")
+    cache = supabase.table("ai_cache").select("response").eq("cache_key", f"{customer_name}_overview_{today}").execute().data
+    news_context = cache[0]["response"] if cache else "No recent news cached yet."
+    
+    system = f"""You are an AI assistant for Haber, a water treatment company. 
+You help Corporate Account Managers understand their customers and make smart decisions.
+You are currently helping with the account: {customer_name}.
+
+Here is what you know about this customer:
+
+PLANTS & DEPLOYMENT:
+{json.dumps(plants, indent=2)}
+
+STAKEHOLDERS:
+{json.dumps(stakeholders, indent=2)}
+
+EXPANSION PIPELINE:
+{json.dumps(pipeline, indent=2)}
+
+RECENT NEWS & INTELLIGENCE:
+{news_context}
+
+Answer questions in a clear, professional, and actionable way. 
+Always tie your answers back to what it means for Haber specifically.
+Keep answers concise — 3-5 sentences max unless a detailed answer is needed.
+Never make up information. If you don't know something, say so."""
+
+    answer = await call_gemini(question, system)
+    return {"answer": answer, "customer": customer_name}
+
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}

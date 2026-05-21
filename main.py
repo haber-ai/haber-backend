@@ -42,25 +42,31 @@ class CustomerRequest(BaseModel):
     customer_name: str
 
 async def call_gemini(prompt: str, system: str = "") -> str:
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": system or "You are a B2B intelligence analyst for Haber, a water treatment company."},
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": 2000,
-                "temperature": 0.7,
-            },
-        )
-        data = response.json()
-        try:
-            return data["choices"][0]["message"]["content"]
-        except Exception:
+    import asyncio
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"]
+    for model in models:
+        async with httpx.AsyncClient(timeout=60) as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}", "Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system or "You are a B2B intelligence analyst for Haber, a water treatment company."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 2000,
+                    "temperature": 0.7,
+                },
+            )
+            data = response.json()
+            if "choices" in data:
+                return data["choices"][0]["message"]["content"]
+            if "rate_limit" in str(data.get("error", {}).get("code", "")):
+                await asyncio.sleep(3)
+                continue
             raise HTTPException(status_code=500, detail=f"Groq error: {json.dumps(data)}")
+    raise HTTPException(status_code=500, detail="All Groq models rate limited. Try again in 1 minute.")
 
 async def tavily_search(query: str, max_results: int = 5) -> list:
     async with httpx.AsyncClient(timeout=30) as client:

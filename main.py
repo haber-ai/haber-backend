@@ -47,7 +47,7 @@ async def call_gemini(prompt: str, system: str = "") -> str:
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}", "Content-Type": "application/json"},
             json={
-                "model": "llama3-8b-8192",
+                "model": "llama-3.1-8b-instant",
                 "messages": [
                     {"role": "system", "content": system or "You are a B2B intelligence analyst for Haber, a water treatment company."},
                     {"role": "user", "content": prompt}

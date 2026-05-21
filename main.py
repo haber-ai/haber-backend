@@ -488,3 +488,4 @@ Return ONLY valid JSON with this exact structure:
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+

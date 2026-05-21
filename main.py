@@ -471,7 +471,7 @@ Return ONLY valid JSON with this exact structure:
 
     if report_data.get("recommended_actions"):
         th_style = ParagraphStyle("TH", parent=styles["Normal"], fontSize=9, textColor=colors.white, fontName="Helvetica-Bold")
-        action_rows = [[Paragraph("<b>Priority</b>", th_style), Paragraph("<b>Action</b>", th_style), Paragraph("<b>Because</b>", th_style), Paragraph("<b>By When</b>", th_style)]]
+        action_rows = [[Paragraph("<b>Priority</b>", th_style), Paragraph("<b>Action</b>", th_style), Paragraph("<b>Because</b>", th_style)]]
         for row in report_data.get("recommended_actions", []):
             pri = row.get("priority", "THIS MONTH")
             pri_color = red if "WEEK" in pri else amber if "MONTH" in pri else mid_navy
@@ -481,7 +481,7 @@ Return ONLY valid JSON with this exact structure:
                 Paragraph(f"<i>{row.get('because', '')}</i>", ParagraphStyle("Bec", parent=styles["Normal"], fontSize=8.5, leading=13, textColor=text_muted, fontName="Helvetica-Oblique")),
 
             ])
-        action_table = Table(action_rows, colWidths=[page_width*0.15, page_width*0.35, page_width*0.5])
+        action_table = Table(action_rows, colWidths=[page_width*0.15, page_width*0.40, page_width*0.45])
         action_table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), mid_navy), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, light_grey]), ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")), ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8), ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
         elements.append(action_table)
 

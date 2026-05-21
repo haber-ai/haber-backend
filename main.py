@@ -291,7 +291,7 @@ async def generate_report(req: CustomerRequest):
     nrr_data = await nrr(overview_req)
     stakeholders = await stakeholder_map(overview_req)
 
-    system = "You are a senior B2B intelligence analyst for Haber. Be specific, direct, and action-oriented. Return only valid JSON."
+    system = "You are a senior B2B intelligence analyst for Haber. Be specific, direct, and action-oriented. Return only valid JSON. Today is 21 May 2026. All timeframes like THIS WEEK or THIS MONTH must be relative to this date."
     report_prompt = f"""
 You are a senior B2B intelligence analyst for Haber, a water treatment and process chemicals company.
 Write a Customer Intelligence Report for {name} based on this data:
@@ -344,7 +344,7 @@ Return ONLY valid JSON with this exact structure:
       "priority": "THIS WEEK or THIS MONTH or THIS QUARTER",
       "action": "Specific action",
       "because": "Why tied to a signal",
-      "by_when": "Specific deadline"
+      
     }}
   ]
 }}
@@ -473,9 +473,9 @@ Return ONLY valid JSON with this exact structure:
                 Paragraph(f"<b>{pri}</b>", ParagraphStyle("Pri", parent=styles["Normal"], fontSize=9, textColor=pri_color, fontName="Helvetica-Bold")),
                 Paragraph(row.get("action", ""), body),
                 Paragraph(f"<i>{row.get('because', '')}</i>", ParagraphStyle("Bec", parent=styles["Normal"], fontSize=8.5, leading=13, textColor=text_muted, fontName="Helvetica-Oblique")),
-                Paragraph(f"<b>{row.get('by_when', '')}</b>", ParagraphStyle("Bw", parent=styles["Normal"], fontSize=9, textColor=text_dark, fontName="Helvetica-Bold")),
+
             ])
-        action_table = Table(action_rows, colWidths=[page_width*0.15, page_width*0.3, page_width*0.35, page_width*0.2])
+        action_table = Table(action_rows, colWidths=[page_width*0.15, page_width*0.35, page_width*0.5])
         action_table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), mid_navy), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, light_grey]), ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")), ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8), ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
         elements.append(action_table)
 

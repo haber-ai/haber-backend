@@ -102,9 +102,9 @@ async def customer_overview(req: CustomerRequest):
         "renewal_date": "To be fetched from Vault",
         "account_manager": "To be fetched from Vault",
     }
-    news_results = await tavily_search(f"{name} news 2025")
-    ma_results = await tavily_search(f"{name} merger acquisition expansion 2025")
-    headcount_results = await tavily_search(f"{name} leadership appointment hiring layoff 2025")
+    news_results = await tavily_search(f"{name} Limited India news 2026")
+    ma_results = await tavily_search(f"{name} Limited India merger acquisition expansion 2026")
+    headcount_results = await tavily_search(f"{name} Limited India leadership appointment hiring 2026")
     all_news = news_results + ma_results + headcount_results
     news_text = "\n".join([f"- {r['title']}: {r.get('content', '')[:300]}" for r in all_news])
     system = "You are a B2B intelligence analyst for Haber, a water treatment and industrial solutions company. Always tie your analysis back to what it means for Haber as a vendor."
@@ -143,7 +143,7 @@ async def stakeholder_map(req: CustomerRequest):
     name = req.customer_name
     supabase_stakeholders = supabase.table("stakeholders").select("*").eq("customer_name", name).execute()
     stakeholders = supabase_stakeholders.data or []
-    leadership_news = await tavily_search(f"{name} CEO CFO CXO appointment resignation leadership change 2025", max_results=5)
+    leadership_news = await tavily_search(f"{name} Limited India CEO CFO CXO appointment resignation 2026", max_results=5)
     news_text = "\n".join([f"- {r['title']}: {r.get('content', '')[:200]}" for r in leadership_news])
     prompt = f"""
 Here are the current stakeholders Haber tracks at {name}:
@@ -173,7 +173,7 @@ async def application_footprint(req: CustomerRequest):
     name = req.customer_name
     plants_result = supabase.table("plants").select("*").eq("customer_name", name).execute()
     plants = plants_result.data or []
-    expansion_news = await tavily_search(f"{name} new plant factory expansion acquisition site 2025", max_results=5)
+    expansion_news = await tavily_search(f"{name} Limited India new plant factory expansion 2026", max_results=5)
     news_text = "\n".join([f"- {r['title']}: {r.get('content', '')[:200]}" for r in expansion_news])
     prompt = f"""
 Here is Haber's current deployment footprint at {name}:
@@ -230,7 +230,7 @@ async def expansion_pipeline(req: CustomerRequest):
     existing_pipeline = pipeline_result.data or []
     plants_result = supabase.table("plants").select("*").eq("customer_name", name).execute()
     plants = plants_result.data or []
-    expansion_news = await tavily_search(f"{name} expansion new plant acquisition investment 2025", max_results=5)
+    expansion_news = await tavily_search(f"{name} Limited India expansion new plant acquisition 2026", max_results=5)
     news_text = "\n".join([f"- {r['title']}: {r.get('content', '')[:200]}" for r in expansion_news])
     prompt = f"""
 Haber's existing expansion pipeline for {name}:
@@ -307,6 +307,8 @@ APPLICATION FOOTPRINT:
 
 EXPANSION PIPELINE:
 {json.dumps(pipeline, indent=2)}
+
+IMPORTANT: Sort the signals array by date with most recent first. January=1, February=2, March=3, April=4, May=5, June=6 etc.
 
 Return ONLY valid JSON with this exact structure:
 {{

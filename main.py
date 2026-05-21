@@ -55,7 +55,7 @@ async def call_gemini(prompt: str, system: str = "") -> str:
     full_prompt = f"{system}\n\n{prompt}" if system else prompt
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key={GEMINI_API_KEY}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}",
             headers={"Content-Type": "application/json"},
             json={
                 "contents": [{"parts": [{"text": full_prompt}]}],

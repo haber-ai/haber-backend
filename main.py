@@ -678,9 +678,16 @@ async def start_scheduler():
 async def stop_scheduler():
     scheduler.shutdown()
 
+
+@app.post("/trigger-slack-report")
+async def trigger_slack_report():
+    await send_weekly_reports()
+    return {"status": "Weekly reports sent to Slack"}
+
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

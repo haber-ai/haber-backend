@@ -43,7 +43,7 @@ class CustomerRequest(BaseModel):
 
 async def call_gemini(prompt: str, system: str = "") -> str:
     import asyncio
-    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"]
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-8b-instant"]
     for model in models:
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
@@ -741,6 +741,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

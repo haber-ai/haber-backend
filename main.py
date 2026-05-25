@@ -603,7 +603,7 @@ async def send_weekly_reports():
 async def start_scheduler():
     scheduler.add_job(
         send_weekly_reports,
-        CronTrigger(day_of_week="mon", hour=4, minute=30, timezone="UTC"),
+        CronTrigger(hour=5, minute=47, timezone="UTC"),
         id="weekly_reports",
         replace_existing=True
     )

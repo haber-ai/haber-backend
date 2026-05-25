@@ -593,10 +593,14 @@ async def send_weekly_reports():
 
             news_text = "\n\n".join(news_lines) if news_lines else "No news fetched"
 
-            # Step 2: Generate PDF report
-            req = CustomerRequest(customer_name=customer)
-            report_response = await generate_report(req)
-            pdf_path = report_response.path
+            # Step 2: Skip PDF generation in scheduler to avoid rate limits
+            pdf_path = None
+            try:
+                req = CustomerRequest(customer_name=customer)
+                report_response = await generate_report(req)
+                pdf_path = report_response.path
+            except Exception as e:
+                print(f"PDF generation skipped for {customer}: {e}")
 
             # Step 3: Send message to Slack
             headers = {
@@ -652,18 +656,28 @@ async def send_weekly_reports():
                 # Post message
                 await client.post("https://slack.com/api/chat.postMessage", headers=headers, json=message)
 
-                # Upload PDF
-                with open(pdf_path, "rb") as pdf_file:
+                # Upload PDF if generated successfully
+                if pdf_path:
+                    with open(pdf_path, "rb") as pdf_file:
+                        await client.post(
+                            "https://slack.com/api/files.upload",
+                            headers={"Authorization": f"Bearer {slack_bot_token}"},
+                            data={
+                                "channels": slack_channel,
+                                "filename": f"{customer}_Intelligence_Report_{datetime.now().strftime('%d_%b_%Y')}.pdf",
+                                "title": f"{customer} Weekly Intelligence Report — {datetime.now().strftime('%d %B %Y')}",
+                                "initial_comment": f":paperclip: Full PDF report for {customer}"
+                            },
+                            files={"file": pdf_file}
+                        )
+                else:
                     await client.post(
-                        "https://slack.com/api/files.upload",
-                        headers={"Authorization": f"Bearer {slack_bot_token}"},
-                        data={
-                            "channels": slack_channel,
-                            "filename": f"{customer}_Intelligence_Report_{datetime.now().strftime('%d_%b_%Y')}.pdf",
-                            "title": f"{customer} Weekly Intelligence Report — {datetime.now().strftime('%d %B %Y')}",
-                            "initial_comment": f":paperclip: Full PDF report for {customer}"
-                        },
-                        files={"file": pdf_file}
+                        "https://slack.com/api/chat.postMessage",
+                        headers=headers,
+                        json={
+                            "channel": slack_channel,
+                            "text": f":paperclip: To download the full PDF report for *{customer}*, open the dashboard and click Generate Report: https://haber-cam.lovable.app"
+                        }
                     )
 
             print(f"Weekly report with PDF sent for {customer}")
@@ -695,6 +709,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

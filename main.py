@@ -552,38 +552,46 @@ async def send_weekly_reports():
         import httpx as _httpx
 
         for customer in customers:
-            # Step 1: Fetch cached news
-            today = datetime.now().strftime("%Y-%m-%d")
-            cache = supabase.table("ai_cache").select("response").eq("cache_key", f"{customer}_overview_{today}").execute().data
+            # Step 1: Fetch fresh news directly
+            import json as _json
             news_lines = []
-            if cache:
-                try:
-                    import json as _json
-                    cached = _json.loads(cache[0]["response"])
-                    icons = {
-                        "Mergers & Acquisitions": ":handshake:",
-                        "Major Trends": ":chart_with_upwards_trend:",
-                        "Minor Trends": ":small_blue_diamond:",
-                        "Key Headcount Changes": ":busts_in_silhouette:",
-                        "Risks & Regulatory Changes": ":warning:",
-                        "Expansions & New Ventures": ":rocket:"
-                    }
-                    for category, items in cached.get("categorized_news", {}).items():
-                        icon = icons.get(category, ":newspaper:")
-                        for item in items[:2]:
-                            headline = item.get("headline", "")
-                            source = item.get("source", "")
+            try:
+                req = CustomerRequest(customer_name=customer)
+                overview_data = await customer_overview(req)
+                intelligence = overview_data.get("intelligence", {})
+                categorized = intelligence.get("categorized_news", {})
+                icons = {
+                    "Mergers & Acquisitions": ":handshake:",
+                    "Major Trends": ":chart_with_upwards_trend:",
+                    "Minor Trends": ":small_blue_diamond:",
+                    "Key Headcount Changes": ":busts_in_silhouette:",
+                    "Risks & Regulatory Changes": ":warning:",
+                    "Expansions & New Ventures": ":rocket:"
+                }
+                for category, items in categorized.items():
+                    if not items:
+                        continue
+                    icon = icons.get(category, ":newspaper:")
+                    for item in items[:2]:
+                        headline = item.get("headline", "")
+                        source = item.get("source", "")
+                        if headline:
                             news_lines.append(f"{icon} *{category}*\n_{headline}_ — {source}")
-                            if len(news_lines) >= 10:
-                                break
                         if len(news_lines) >= 10:
                             break
-                except:
-                    news_lines = ["News available on dashboard"]
-            else:
-                news_lines = ["Open dashboard to load latest news for this customer"]
+                    if len(news_lines) >= 10:
+                        break
 
-            news_text = "\n\n".join(news_lines)
+                # Also add haber implications
+                implications = intelligence.get("haber_implications", [])
+                if implications:
+                    impl_text = "\n".join([f"• {imp}" for imp in implications[:3]])
+                    news_lines.append(f":bulb: *What This Means for Haber*\n{impl_text}")
+
+            except Exception as e:
+                news_lines = [f"Error fetching news: {str(e)}"]
+
+            news_text = "\n\n".join(news_lines) if news_lines else "No news fetched"
 
             # Step 2: Generate PDF report
             req = CustomerRequest(customer_name=customer)
@@ -687,6 +695,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

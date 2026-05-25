@@ -542,16 +542,63 @@ from apscheduler.triggers.cron import CronTrigger
 scheduler = AsyncIOScheduler()
 
 async def send_weekly_reports():
-    slack_webhook = os.getenv("SLACK_WEBHOOK_URL")
-    if not slack_webhook:
-        print("No Slack webhook configured")
+    slack_bot_token = os.getenv("SLACK_BOT_TOKEN")
+    slack_channel = os.getenv("SLACK_CHANNEL_ID")
+    if not slack_bot_token or not slack_channel:
+        print("No Slack bot token or channel configured")
         return
     try:
         customers = ["ITC", "JK Papers"]
         import httpx as _httpx
+
         for customer in customers:
+            # Step 1: Fetch cached news
+            today = datetime.now().strftime("%Y-%m-%d")
+            cache = supabase.table("ai_cache").select("response").eq("cache_key", f"{customer}_overview_{today}").execute().data
+            news_lines = []
+            if cache:
+                try:
+                    import json as _json
+                    cached = _json.loads(cache[0]["response"])
+                    icons = {
+                        "Mergers & Acquisitions": ":handshake:",
+                        "Major Trends": ":chart_with_upwards_trend:",
+                        "Minor Trends": ":small_blue_diamond:",
+                        "Key Headcount Changes": ":busts_in_silhouette:",
+                        "Risks & Regulatory Changes": ":warning:",
+                        "Expansions & New Ventures": ":rocket:"
+                    }
+                    for category, items in cached.get("categorized_news", {}).items():
+                        icon = icons.get(category, ":newspaper:")
+                        for item in items[:2]:
+                            headline = item.get("headline", "")
+                            source = item.get("source", "")
+                            news_lines.append(f"{icon} *{category}*\n_{headline}_ — {source}")
+                            if len(news_lines) >= 10:
+                                break
+                        if len(news_lines) >= 10:
+                            break
+                except:
+                    news_lines = ["News available on dashboard"]
+            else:
+                news_lines = ["Open dashboard to load latest news for this customer"]
+
+            news_text = "\n\n".join(news_lines)
+
+            # Step 2: Generate PDF report
+            req = CustomerRequest(customer_name=customer)
+            report_response = await generate_report(req)
+            pdf_path = report_response.path
+
+            # Step 3: Send message to Slack
+            headers = {
+                "Authorization": f"Bearer {slack_bot_token}",
+                "Content-Type": "application/json"
+            }
+
             message = {
-                "text": f":bar_chart: Weekly Customer Intelligence Report — {customer}",
+                "channel": slack_channel,
+                "text": f":bar_chart: Weekly Intelligence Report — {customer}",
                 "blocks": [
                     {
                         "type": "header",
@@ -561,18 +608,18 @@ async def send_weekly_reports():
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f":calendar: *{datetime.now().strftime('%A, %d %B %Y')}*\n\nYour weekly customer intelligence report for *{customer}* is ready. View the latest news signals, implications for Haber, expansion opportunities, and recommended actions."
+                            "text": f":calendar: *{datetime.now().strftime('%A, %d %B %Y')}*\n\nHere is the weekly intelligence briefing for *{customer}*. The full PDF report is attached below."
                         }
                     },
+                    {"type": "divider"},
                     {
                         "type": "section",
-                        "fields": [
-                            {"type": "mrkdwn", "text": ":newspaper: *Whats Happening*\nLatest M&A, trends, headcount changes"},
-                            {"type": "mrkdwn", "text": ":bulb: *What It Means*\nImplications for Haber specifically"},
-                            {"type": "mrkdwn", "text": ":dart: *Opportunities*\nExpansion pipeline and whitespace"},
-                            {"type": "mrkdwn", "text": ":warning: *Risk Flags*\nThings to watch out for"}
-                        ]
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f":newspaper: *Latest News & Signals*\n\n{news_text}"
+                        }
                     },
+                    {"type": "divider"},
                     {
                         "type": "actions",
                         "elements": [
@@ -584,7 +631,6 @@ async def send_weekly_reports():
                             }
                         ]
                     },
-                    {"type": "divider"},
                     {
                         "type": "context",
                         "elements": [
@@ -593,9 +639,27 @@ async def send_weekly_reports():
                     }
                 ]
             }
-            async with _httpx.AsyncClient() as client:
-                await client.post(slack_webhook, json=message)
-            print(f"Weekly Slack report sent for {customer}")
+
+            async with _httpx.AsyncClient(timeout=60) as client:
+                # Post message
+                await client.post("https://slack.com/api/chat.postMessage", headers=headers, json=message)
+
+                # Upload PDF
+                with open(pdf_path, "rb") as pdf_file:
+                    await client.post(
+                        "https://slack.com/api/files.upload",
+                        headers={"Authorization": f"Bearer {slack_bot_token}"},
+                        data={
+                            "channels": slack_channel,
+                            "filename": f"{customer}_Intelligence_Report_{datetime.now().strftime('%d_%b_%Y')}.pdf",
+                            "title": f"{customer} Weekly Intelligence Report — {datetime.now().strftime('%d %B %Y')}",
+                            "initial_comment": f":paperclip: Full PDF report for {customer}"
+                        },
+                        files={"file": pdf_file}
+                    )
+
+            print(f"Weekly report with PDF sent for {customer}")
+
     except Exception as e:
         print(f"Error in weekly scheduler: {e}")
 
@@ -617,5 +681,6 @@ async def stop_scheduler():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 

@@ -52,7 +52,7 @@ async def call_gemini(prompt: str, system: str = "") -> str:
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": system or "You are a B2B intelligence analyst for Haber, a water treatment company."},
+                        {"role": "system", "content": system or "You are a B2B intelligence analyst for Haber, a manufacturing intelligence platform company. Haber sells AI-powered solutions (eLIXA, Mt. Fuji, Kaiznn, Kensei, FiMorph) that help manufacturers improve efficiency, reduce waste, and automate processes. Haber serves Paper & Pulp, Metals & Mining, Food & Beverages, Oil & Gas, and Institutions industries. Always tie insights back to Haber's specific products and how they can help the customer."},
                         {"role": "user", "content": prompt}
                     ],
                     "max_tokens": 2000,
@@ -113,7 +113,7 @@ async def customer_overview(req: CustomerRequest):
     headcount_results = await tavily_search(f"{name} Limited India leadership appointment hiring 2026")
     all_news = news_results + ma_results + headcount_results
     news_text = "\n".join([f"- {r['title']}: {r.get('content', '')[:300]}" for r in all_news])
-    system = "You are a B2B intelligence analyst for Haber, a water treatment and industrial solutions company. Always tie your analysis back to what it means for Haber as a vendor."
+    system = "You are a B2B intelligence analyst for Haber, a manufacturing intelligence platform company that sells AI-powered solutions including eLIXA (intelligent process automation), Mt. Fuji (manufacturing intelligence platform), Kaiznn (MES and planning suite), Kensei, and FiMorph. Haber serves Paper & Pulp, Metals & Mining, Food & Beverages, Oil & Gas industries. Always tie your analysis back to which specific Haber product or solution could help, and what action the CAM should take."
     prompt = f"""
 Here is recent news about {name}, one of Haber's enterprise customers:
 {news_text}
@@ -593,6 +593,30 @@ async def send_weekly_reports():
 
             news_text = "\n\n".join(news_lines) if news_lines else "No news fetched"
 
+            # Step 1b: Fetch industry news relevant to Haber
+            industry_lines = []
+            try:
+                industry_searches = [
+                    "paper pulp industry India manufacturing news 2026",
+                    "food beverage manufacturing India automation AI 2026",
+                    "manufacturing intelligence AI industrial automation India 2026",
+                    "water treatment effluent regulations India 2026"
+                ]
+                import httpx as _httpx2
+                for query in industry_searches:
+                    results = await tavily_search(query, max_results=2)
+                    for r in results[:1]:
+                        headline = r.get("title", "")
+                        source = r.get("url", "").split("/")[2] if r.get("url") else ""
+                        if headline:
+                            industry_lines.append(f":globe_with_meridians: _{headline}_ — {source}")
+                    if len(industry_lines) >= 4:
+                        break
+            except Exception as e:
+                industry_lines = [f"Industry news unavailable: {str(e)}"]
+
+            industry_text = "\n".join(industry_lines) if industry_lines else "No industry news fetched"
+
             # Step 2: Skip PDF generation in scheduler to avoid rate limits
             pdf_path = None
             try:
@@ -629,6 +653,14 @@ async def send_weekly_reports():
                         "text": {
                             "type": "mrkdwn",
                             "text": f":newspaper: *Latest News & Signals*\n\n{news_text}"
+                        }
+                    },
+                    {"type": "divider"},
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f":factory: *Industry News Relevant to Haber*\n\n{industry_text}"
                         }
                     },
                     {"type": "divider"},
@@ -709,6 +741,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

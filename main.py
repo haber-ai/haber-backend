@@ -603,7 +603,7 @@ async def send_weekly_reports():
 async def start_scheduler():
     scheduler.add_job(
         send_weekly_reports,
-        CronTrigger(hour=5, minute=47, timezone="UTC"),
+        CronTrigger(hour=5, minute=58, timezone="UTC"),
         id="weekly_reports",
         replace_existing=True
     )
@@ -617,4 +617,5 @@ async def stop_scheduler():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 

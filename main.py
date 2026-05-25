@@ -535,6 +535,85 @@ Never make up information. If you don't know something, say so."""
     answer = await call_gemini(question, system)
     return {"answer": answer, "customer": customer_name}
 
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+scheduler = AsyncIOScheduler()
+
+async def send_weekly_reports():
+    slack_webhook = os.getenv("SLACK_WEBHOOK_URL")
+    if not slack_webhook:
+        print("No Slack webhook configured")
+        return
+    try:
+        customers = ["ITC", "JK Papers"]
+        import httpx as _httpx
+        for customer in customers:
+            message = {
+                "text": f":bar_chart: Weekly Customer Intelligence Report — {customer}",
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {"type": "plain_text", "text": f"Weekly Intelligence Report — {customer}"}
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f":calendar: *{datetime.now().strftime('%A, %d %B %Y')}*\n\nYour weekly customer intelligence report for *{customer}* is ready. View the latest news signals, implications for Haber, expansion opportunities, and recommended actions."
+                        }
+                    },
+                    {
+                        "type": "section",
+                        "fields": [
+                            {"type": "mrkdwn", "text": ":newspaper: *Whats Happening*\nLatest M&A, trends, headcount changes"},
+                            {"type": "mrkdwn", "text": ":bulb: *What It Means*\nImplications for Haber specifically"},
+                            {"type": "mrkdwn", "text": ":dart: *Opportunities*\nExpansion pipeline and whitespace"},
+                            {"type": "mrkdwn", "text": ":warning: *Risk Flags*\nThings to watch out for"}
+                        ]
+                    },
+                    {
+                        "type": "actions",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "text": {"type": "plain_text", "text": "View Dashboard"},
+                                "url": "https://haber-cam.lovable.app",
+                                "style": "primary"
+                            }
+                        ]
+                    },
+                    {"type": "divider"},
+                    {
+                        "type": "context",
+                        "elements": [
+                            {"type": "mrkdwn", "text": "_Sent automatically every Monday 10 AM IST by Haber Intelligence Platform_"}
+                        ]
+                    }
+                ]
+            }
+            async with _httpx.AsyncClient() as client:
+                await client.post(slack_webhook, json=message)
+            print(f"Weekly Slack report sent for {customer}")
+    except Exception as e:
+        print(f"Error in weekly scheduler: {e}")
+
+@app.on_event("startup")
+async def start_scheduler():
+    scheduler.add_job(
+        send_weekly_reports,
+        CronTrigger(day_of_week="mon", hour=4, minute=30, timezone="UTC"),
+        id="weekly_reports",
+        replace_existing=True
+    )
+    scheduler.start()
+    print("Scheduler started — weekly reports every Monday 10 AM IST")
+
+@app.on_event("shutdown")
+async def stop_scheduler():
+    scheduler.shutdown()
+
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}

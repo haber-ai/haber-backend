@@ -673,10 +673,26 @@ async def send_weekly_reports():
             import json as _json
             news_lines = []
             try:
+                # Fetch raw news directly from Tavily with dates
+                raw_news = await tavily_search(f"{customer} Limited India news 2026", max_results=5)
+                raw_ma = await tavily_search(f"{customer} Limited India merger acquisition expansion 2026", max_results=3)
+                raw_head = await tavily_search(f"{customer} Limited India leadership appointment 2026", max_results=2)
+                all_raw = raw_news + raw_ma + raw_head
+
+                # Also get AI categorization for structure
                 req = CustomerRequest(customer_name=customer)
                 overview_data = await customer_overview(req)
                 intelligence = overview_data.get("intelligence", {})
                 categorized = intelligence.get("categorized_news", {})
+
+                # Build date lookup from raw results
+                date_lookup = {}
+                for r in all_raw:
+                    title = r.get("title", "")
+                    pub = r.get("published_date", "") or r.get("date", "")
+                    if title and pub:
+                        date_lookup[title[:40]] = pub[:10]
+
                 icons = {
                     "Mergers & Acquisitions": ":handshake:",
                     "Major Trends": ":chart_with_upwards_trend:",
@@ -693,18 +709,22 @@ async def send_weekly_reports():
                         headline = item.get("headline", "")
                         source = item.get("source", "")
                         if headline:
-                            pub_date = item.get("date", "") or item.get("published_date", "") or ""
+                            # Try to find date from raw results
+                            pub_date = ""
+                            for key, val in date_lookup.items():
+                                if key[:20].lower() in headline[:40].lower():
+                                    pub_date = val
+                                    break
                             if pub_date:
                                 try:
                                     from datetime import datetime as _dt
-                                    pub_date = _dt.strptime(pub_date[:10], "%Y-%m-%d").strftime("%d %b %Y")
+                                    pub_date = _dt.strptime(pub_date, "%Y-%m-%d").strftime("%d %b %Y")
                                 except:
-                                    pub_date = pub_date[:10]
-                                news_lines.append(f"{icon} *{category}*\n_{headline}_ — {source} · {pub_date}")
-                            else:
-                                src_display = source if source and source != "unknown" else ""
-                                src_part = f" — {src_display}" if src_display else ""
-                                news_lines.append(f"{icon} *{category}*\n_{headline}_{src_part}")
+                                    pass
+                            src_display = source if source and source != "unknown" else ""
+                            src_part = f" — {src_display}" if src_display else ""
+                            date_part = f" · {pub_date}" if pub_date else ""
+                            news_lines.append(f"{icon} *{category}*\n_{headline}_{src_part}{date_part}")
                         if len(news_lines) >= 10:
                             break
                     if len(news_lines) >= 10:
@@ -869,6 +889,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

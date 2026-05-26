@@ -225,7 +225,7 @@ async def customer_overview(req: CustomerRequest):
     ma_results = await tavily_search(f"{name} Limited India merger acquisition expansion 2026")
     headcount_results = await tavily_search(f"{name} Limited India leadership appointment hiring 2026")
     all_news = news_results + ma_results + headcount_results
-    news_text = "\n".join([f"- {r['title']}: {r.get('content', '')[:300]}" for r in all_news])
+    news_text = "\n".join([f"- {r['title']} (published: {r.get('published_date', 'unknown')[:10]}): {r.get('content', '')[:300]}" for r in all_news])
     system = "You are a B2B intelligence analyst for Haber, a manufacturing intelligence platform company that sells AI-powered solutions including eLIXA (intelligent process automation), Mt. Fuji (manufacturing intelligence platform), Kaiznn (MES and planning suite), Kensei, and FiMorph. Haber serves Paper & Pulp, Metals & Mining, Food & Beverages, Oil & Gas industries. Always tie your analysis back to which specific Haber product or solution could help, and what action the CAM should take."
     prompt = f"""
 Here is recent news about {name}, one of Haber's enterprise customers:
@@ -242,7 +242,7 @@ Please do two things:
    - Key Headcount Changes
    - Risks & Regulatory Changes
    - Expansions & New Ventures
-   For each item: write the headline, assign a category tag, note the source if available.
+   For each item: write the headline, assign a category tag, note the source and published date if available. Include the date in format "DD Mon YYYY".
 
 2. WHAT THIS MEANS FOR HABER: Write 3-5 bullet points explaining what these developments mean specifically for Haber as a water treatment vendor to this company.
 
@@ -693,7 +693,7 @@ async def send_weekly_reports():
                         headline = item.get("headline", "")
                         source = item.get("source", "")
                         if headline:
-                            pub_date = item.get("published_date", "") or item.get("date", "")
+                            pub_date = item.get("date", "") or item.get("published_date", "") or ""
                             if pub_date:
                                 try:
                                     from datetime import datetime as _dt
@@ -869,6 +869,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

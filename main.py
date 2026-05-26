@@ -702,7 +702,9 @@ async def send_weekly_reports():
                                     pub_date = pub_date[:10]
                                 news_lines.append(f"{icon} *{category}*\n_{headline}_ — {source} · {pub_date}")
                             else:
-                                news_lines.append(f"{icon} *{category}*\n_{headline}_ — {source}")
+                                src_display = source if source and source != "unknown" else ""
+                                src_part = f" — {src_display}" if src_display else ""
+                                news_lines.append(f"{icon} *{category}*\n_{headline}_{src_part}")
                         if len(news_lines) >= 10:
                             break
                     if len(news_lines) >= 10:
@@ -867,6 +869,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

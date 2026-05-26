@@ -664,7 +664,11 @@ async def send_weekly_reports():
         customers = ["ITC", "JK Papers"]
         import httpx as _httpx
 
-        for customer in customers:
+        for i, customer in enumerate(customers):
+            # Add delay between customers to avoid rate limits
+            if i > 0:
+                import asyncio
+                await asyncio.sleep(30)
             # Step 1: Fetch fresh news directly
             import json as _json
             news_lines = []
@@ -757,7 +761,7 @@ async def send_weekly_reports():
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f":calendar: *{datetime.now().strftime('%A, %d %B %Y')}*\n\nHere is the weekly intelligence briefing for *{customer}*. The full PDF report is attached below."
+                            "text": f":calendar: *{datetime.now().strftime('%A, %d %B %Y')}*\n\nHere is the weekly intelligence briefing for *{customer}*."
                         }
                     },
                     {"type": "divider"},
@@ -854,6 +858,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

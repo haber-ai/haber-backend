@@ -208,12 +208,18 @@ async def get_vault_data(req: CustomerRequest):
 @app.post("/customer-overview")
 async def customer_overview(req: CustomerRequest):
     name = req.customer_name
+    # Fetch real data from Vault
+    vault_raw = await fetch_from_vault()
+    plants = get_plant_data(vault_raw, name)
+    vault_formatted = format_vault_for_dashboard(plants)
     vault_data = {
         "company": name,
-        "industry": "To be fetched from Vault",
-        "contract_value": "To be fetched from Vault",
-        "renewal_date": "To be fetched from Vault",
-        "account_manager": "To be fetched from Vault",
+        "plants": vault_formatted.get("plants", []),
+        "total_pipeline_lakhs": vault_formatted.get("total_pipeline_lakhs", 0),
+        "plant_count": vault_formatted.get("plant_count", 0),
+        "chemical_deals": vault_formatted.get("chemical_deals", []),
+        "saas_deals": vault_formatted.get("saas_deals", []),
+        "stakeholders": vault_formatted.get("stakeholders", []),
     }
     news_results = await tavily_search(f"{name} Limited India news 2026")
     ma_results = await tavily_search(f"{name} Limited India merger acquisition expansion 2026")
@@ -848,6 +854,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

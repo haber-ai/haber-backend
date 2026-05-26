@@ -98,6 +98,113 @@ async def cached_gemini(cache_key: str, prompt: str, system: str = "") -> str:
         pass
     return response
 
+
+async def fetch_from_vault() -> dict:
+    """Fetch all customer data from Vault CRM"""
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.get(
+            os.getenv("VAULT_BASE_URL"),
+            headers={"x-service-secret": os.getenv("VAULT_API_KEY")},
+        )
+        if response.status_code != 200:
+            return {}
+        return response.json()
+
+def get_plant_data(vault_data: dict, search_name: str) -> list:
+    plants = []
+    for key, val in vault_data.get("data", {}).items():
+        plant_name = val.get("customer_name", "")
+        if search_name.lower() in plant_name.lower():
+            plants.append(val)
+    return plants
+
+def format_vault_for_dashboard(plants: list) -> dict:
+    all_stakeholders = []
+    all_deals = []
+    all_saas_deals = []
+    total_value = 0
+
+    for plant in plants:
+        plant_name = plant.get("customer_name", "")
+
+        for person in plant.get("people_survey", []):
+            all_stakeholders.append({
+                "name": person.get("name", ""),
+                "designation": person.get("job_title", ""),
+                "department": person.get("department", ""),
+                "email": person.get("email", ""),
+                "phone": person.get("contact_no", ""),
+                "plant": plant_name,
+                "tag": person.get("tag", "Neutral"),
+                "office_location": person.get("office_location", ""),
+            })
+
+        for deal in plant.get("deals", []):
+            val = float(deal.get("Opportunity_value", 0) or 0)
+            total_value += val
+            activities = []
+            for act in deal.get("activities", []):
+                msg = act.get("message") or act.get("heading") or ""
+                if msg:
+                    activities.append({
+                        "date": act.get("timestamp", "")[:10],
+                        "sender": act.get("senderName", ""),
+                        "message": msg
+                    })
+            all_deals.append({
+                "plant": plant_name,
+                "application": deal.get("application_name", ""),
+                "value_inr": val,
+                "value_lakhs": round(val / 100000, 2),
+                "billing_type": deal.get("billing_type", ""),
+                "win_chances": deal.get("win_chances", ""),
+                "created_date": deal.get("created_date", "")[:10],
+                "type": "chemical",
+                "activities": activities[:5]
+            })
+
+        for deal in plant.get("saas_deals", []):
+            val = float(deal.get("deal_value", 0) or 0)
+            total_value += val
+            activities = []
+            for act in deal.get("activities", []):
+                msg = act.get("message") or act.get("heading") or ""
+                if msg and not msg.startswith("{"):
+                    activities.append({
+                        "date": act.get("timestamp", "")[:10],
+                        "sender": act.get("senderName", ""),
+                        "message": msg
+                    })
+            all_saas_deals.append({
+                "plant": plant_name,
+                "application": deal.get("application", ""),
+                "value_inr": val,
+                "value_lakhs": round(val / 100000, 2),
+                "total_contract_value_lakhs": round(float(deal.get("total_contract_value", 0) or 0) / 100000, 2),
+                "arr_lakhs": round(float(deal.get("arr_value", 0) or 0) / 100000, 2),
+                "win_chances": deal.get("win_chances", ""),
+                "contract_duration_years": deal.get("contract_duration", ""),
+                "type": "saas",
+                "activities": activities[:5]
+            })
+
+    return {
+        "stakeholders": all_stakeholders,
+        "chemical_deals": all_deals,
+        "saas_deals": all_saas_deals,
+        "total_pipeline_lakhs": round(total_value / 100000, 2),
+        "plant_count": len(plants),
+        "plants": [p.get("customer_name") for p in plants]
+    }
+
+@app.post("/vault-data")
+async def get_vault_data(req: CustomerRequest):
+    """Get real CRM data for a customer from Vault"""
+    vault_raw = await fetch_from_vault()
+    plants = get_plant_data(vault_raw, req.customer_name)
+    formatted = format_vault_for_dashboard(plants)
+    return {"customer": req.customer_name, "vault_data": formatted}
+
 @app.post("/customer-overview")
 async def customer_overview(req: CustomerRequest):
     name = req.customer_name
@@ -741,6 +848,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

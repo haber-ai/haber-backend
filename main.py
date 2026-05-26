@@ -668,7 +668,7 @@ async def send_weekly_reports():
             # Add delay between customers to avoid rate limits
             if i > 0:
                 import asyncio
-                await asyncio.sleep(30)
+                await asyncio.sleep(60)
             # Step 1: Fetch fresh news directly
             import json as _json
             news_lines = []
@@ -867,6 +867,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

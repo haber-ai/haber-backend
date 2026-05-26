@@ -693,7 +693,7 @@ async def send_weekly_reports():
                         headline = item.get("headline", "")
                         source = item.get("source", "")
                         if headline:
-                            pub_date = r.get("published_date", "") or r.get("date", "")
+                            pub_date = item.get("published_date", "") or item.get("date", "")
                             if pub_date:
                                 try:
                                     from datetime import datetime as _dt
@@ -869,6 +869,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

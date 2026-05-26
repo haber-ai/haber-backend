@@ -101,7 +101,7 @@ async def cached_gemini(cache_key: str, prompt: str, system: str = "") -> str:
 
 async def fetch_from_vault() -> dict:
     """Fetch all customer data from Vault CRM"""
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=30, verify=False) as client:
         response = await client.get(
             os.getenv("VAULT_BASE_URL"),
             headers={"x-service-secret": os.getenv("VAULT_API_KEY")},
@@ -848,6 +848,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

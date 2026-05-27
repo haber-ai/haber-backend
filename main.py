@@ -856,7 +856,7 @@ async def send_weekly_reports():
                         headers=headers,
                         json={
                             "channel": slack_channel,
-                            "text": f":paperclip: To download the full PDF report for *{customer}*, open the dashboard and click Generate Report: https://haber-cam.lovable.app"
+                            "text": f":link: View full dashboard: https://haber-cam.lovable.app"
                         }
                     )
 
@@ -889,6 +889,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

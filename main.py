@@ -865,8 +865,26 @@ async def send_weekly_reports():
     except Exception as e:
         print(f"Error in weekly scheduler: {e}")
 
+async def prewarm_cache():
+    customers = ["ITC", "JK Papers"]
+    for customer in customers:
+        try:
+            req = CustomerRequest(customer_name=customer)
+            await customer_overview(req)
+            print(f"Cache prewarmed for {customer}")
+            import asyncio
+            await asyncio.sleep(60)
+        except Exception as e:
+            print(f"Cache prewarm failed for {customer}: {e}")
+
 @app.on_event("startup")
 async def start_scheduler():
+    scheduler.add_job(
+        prewarm_cache,
+        CronTrigger(day_of_week="mon", hour=4, minute=25, timezone="UTC"),
+        id="prewarm_cache",
+        replace_existing=True
+    )
     scheduler.add_job(
         send_weekly_reports,
         CronTrigger(day_of_week="mon", hour=4, minute=30, timezone="UTC"),
@@ -874,7 +892,7 @@ async def start_scheduler():
         replace_existing=True
     )
     scheduler.start()
-    print("Scheduler started — weekly reports every Monday 10 AM IST")
+    print("Scheduler started — cache prewarm 9:55 AM, reports 10:00 AM IST every Monday")
 
 @app.on_event("shutdown")
 async def stop_scheduler():
@@ -889,6 +907,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 

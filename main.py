@@ -869,7 +869,7 @@ async def send_weekly_reports():
 async def start_scheduler():
     scheduler.add_job(
         send_weekly_reports,
-        CronTrigger(hour=5, minute=58, timezone="UTC"),
+        CronTrigger(day_of_week="mon", hour=4, minute=30, timezone="UTC"),
         id="weekly_reports",
         replace_existing=True
     )
@@ -889,6 +889,7 @@ async def trigger_slack_report():
 @app.get("/")
 def root():
     return {"status": "Haber Intelligence API is running"}
+
 
 
 
